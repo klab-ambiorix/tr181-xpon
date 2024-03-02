@@ -1,0 +1,7 @@
+variables:
+  BUILD_DEPS: libamxc libamxo libamxp libamxd libamxm libamxb sah-lib-sahtrace-dev
+  BUILD_TARGET: tr181-xpon
+  PC_GPLUSPLUS: "off"
+
+include:
+  - remote: 'https://gitlab.com/soft.at.home/ci/gitlab-ci/raw/main/ambiorix-default-pipeline.yml'

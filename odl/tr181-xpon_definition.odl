@@ -1,0 +1,228 @@
+/****************************************************************************
+**
+** Copyright (c) 2022 SoftAtHome
+**
+** Redistribution and use in source and binary forms, with or
+** without modification, are permitted provided that the following
+** conditions are met:
+**
+** 1. Redistributions of source code must retain the above copyright
+** notice, this list of conditions and the following disclaimer.
+**
+** 2. Redistributions in binary form must reproduce the above
+** copyright notice, this list of conditions and the following
+** disclaimer in the documentation and/or other materials provided
+** with the distribution.
+**
+** Subject to the terms and conditions of this license, each
+** copyright holder and contributor hereby grants to those receiving
+** rights under this license a perpetual, worldwide, non-exclusive,
+** no-charge, royalty-free, irrevocable (except for failure to
+** satisfy the conditions of this license) patent license to make,
+** have made, use, offer to sell, sell, import, and otherwise
+** transfer this software, where such license applies only to those
+** patent claims, already acquired or hereafter acquired, licensable
+** by such copyright holder or contributor that are necessarily
+** infringed by:
+**
+** (a) their Contribution(s) (the licensed copyrights of copyright
+** holders and non-copyrightable additions of contributors, in
+** source or binary form) alone; or
+**
+** (b) combination of their Contribution(s) with the work of
+** authorship to which such Contribution(s) was added by such
+** copyright holder or contributor, if, at the time the Contribution
+** is added, such addition causes such combination to be necessarily
+** infringed. The patent license shall not apply to any other
+** combinations which include the Contribution.
+**
+** Except as expressly stated above, no rights or licenses from any
+** copyright holder or contributor is granted under this license,
+** whether expressly, by implication, estoppel or otherwise.
+**
+** DISCLAIMER
+**
+** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+** CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+** INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+** MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+** DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR
+** CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+** SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+** LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
+** USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+** AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+** LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+** ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+** POSSIBILITY OF SUCH DAMAGE.
+**
+****************************************************************************/
+
+%define {
+
+    /**
+        This object models one or more xPON interfaces or ONUs as specified by
+        the ITU based PON standards. It does not address IEEE based PON
+        standards (like EPON). An ONU performs tasks such as traffic
+        classification, VLAN manipulation, GEM port mapping, aggregation and/or
+        forwarding between one or more UNIs and one or more ANIs.
+    */
+    object XPON {
+
+        /**
+            The vendor specific module found (and loaded) at startup.
+
+            The module implements the adaptation layer between the generic part
+            of the XPON manager and the vendor/hardco specific part. The latter
+            part implements the PON HAL, aka the PON lower-level API.
+        */
+        %protected %read-only string ModuleName {
+            default "";
+            on action validate call check_maximum_length 64;
+        }
+
+        /**
+            True if the XPON manager encountered a vendor module related error.
+
+            The XPON manager sets this parameter to true if it encounters one of
+            the following errors:
+            - It fails to find a vendor module.
+            - It finds more than one vendor module. An image must only install 1
+              vendor module.
+            - It fails to load the module.
+        */
+        %protected %read-only bool ModuleError {
+            default false;
+        }
+
+        /**
+            FSM state of the vendor module.
+
+            A vendor module might use an FSM for implementation. To ease
+            debugging it can use this parameter to report the FSM state.
+        */
+        %protected %read-only string FsmState;
+
+        /**
+            This object models one xPON interface or ONU as specified by the ITU
+            based PON standards.
+
+            At most one entry in this table can exist with a given value for
+            Name.
+        */
+        %read-only object ONU[] {
+            counted with ONUNumberOfEntries;
+
+            /**
+                Enables or disables this ONU. If disabled, the ONU should
+                prevent user traffic from flowing, suppress notifications, and
+                power down as much as possible.
+
+                This parameter is read-write. But because the plugin does not
+                handle its persistency via the odl mechanism, this parameter
+                does have the attribute '%persistent'.
+            */
+            bool Enable = false;
+
+            /**
+                PON mode.
+
+                Sets the PON mode that the plugin needs to use for connecting
+                to the OLT.
+            */
+            %protected string PONMode {
+                default "G-PON";
+                on action validate call check_enum
+                    ["G-PON", "XGS-PON" ];
+            }
+            /**
+                Select IF to the non-OMCI management domain.
+
+                If true, use a PPTP Ethernet UNI as IF to the non-OMCI
+                management domain, else use a VEIP.
+
+                See BBF TR-280, R-68:
+                "Multi-managed ONU MUST implement either a Virtual Ethernet
+                Interface Point (VEIP) interface or a Physical Path Termination
+                Point (PPTP) UNI interface as the interface to the non OMCI
+                management domain."
+
+                Default the ONU must select a VEIP.
+            */
+            %protected bool UsePPTPEthernetUNIasIFtoNonOmciDomain {
+                default false;
+            }
+
+            /**
+                The textual name of the ONU as assigned by the CPE.
+            */
+            %unique %key string Name {
+                on action validate call check_maximum_length 64;
+            }
+
+            /**
+                This attribute identifies the version of the ONU as defined by
+                the vendor.
+
+                This parameter is based on Version from [Section 9.1.1/G.988].
+            */
+            %read-only string Version {
+                on action validate call check_maximum_length 14;
+            }
+
+            /**
+                This attribute may be used to identify the specific type of ONU.
+
+                This parameter is based on "Equipment ID" from [Section
+                9.1.2/G.988].
+            */
+            %read-only string EquipmentID {
+                on action validate call check_maximum_length 20;
+            }
+
+            %read-only object SoftwareImage[2] {
+                counted with SoftwareImageNumberOfEntries;
+            }
+
+            %read-only object EthernetUNI[] {
+                counted with EthernetUNINumberOfEntries;
+            }
+
+            %read-only object ANI[] {
+                counted with ANINumberOfEntries;
+            }
+        }
+    }
+}
+
+include "tr181-xpon_SoftwareImage.odl";
+include "tr181-xpon_EthernetUNI.odl";
+include "tr181-xpon_ANI.odl";
+
+%populate {
+    on event "dm:object-changed" call onu_enable_changed
+        filter 'path matches "XPON\.ONU\.[0-9]+\.$" &&
+                contains("parameters.Enable")';
+
+    on event "dm:object-changed" call ani_enable_changed
+        filter 'path matches "XPON\.ONU\.[0-9]+\.ANI\.[0-9]+\.$" &&
+                contains("parameters.Enable")';
+
+    on event "dm:instance-added" call interface_object_added
+        filter 'path matches "XPON\.ONU\.[0-9]+\.EthernetUNI\.$"';
+
+    on event "dm:instance-added" call interface_object_added
+        filter 'path matches "XPON\.ONU\.[0-9]+\.ANI\.$"';
+
+    on event "dm:object-changed" call status_changed
+        filter 'path matches "XPON\.ONU\.[0-9]+\.EthernetUNI\.[0-9]+\.$" &&
+                contains("parameters.Status")';
+
+    on event "dm:object-changed" call status_changed
+        filter 'path matches "XPON\.ONU\.[0-9]+\.ANI\.[0-9]+\.$" &&
+                contains("parameters.Status")';
+
+    on event "dm:object-changed" call password_changed
+        filter 'path matches "XPON\.ONU\.[0-9]+\.ANI\.[0-9]+\.TC\.Authentication\.$" &&
+                contains("parameters.Password")';
+}
