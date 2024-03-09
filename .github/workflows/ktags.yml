@@ -1,6 +1,6 @@
-# Deploy Doxygen Documentation to GitHub Pages
+# Deploy Ktags to GitHub Pages
 
-name: Deploy Doxygen
+name: Deploy Ktags
 
 on:
   # Runs on pushes targeting the default branch
@@ -26,26 +26,32 @@ jobs:
   # Build job
   build:
     runs-on: ubuntu-latest
+
+    env:
+      DIR_GITHUB_WORKFLOW: .github/workflows
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Installing Doxygen
+      - name: Install Global
         run: |
           sudo apt-get update && \
-          sudo apt-get install -y --no-install-recommends doxygen graphviz
+          sudo apt-get install -y --no-install-recommends global
 
       - name: Setup Pages
+        id: pages
         uses: actions/configure-pages@v4
 
-      - name: Building Doxygen
-        run: doxygen Doxyfile
+      - name: Build Ktags
+        run: |
+          $DIR_GITHUB_WORKFLOW/ktags_build_xref.sh "tr181-xpon" "https://github.com/klab-ambiorix/tr181-xpon"
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           name: github-pages
-          path: ./__html/doxygen
+          path: ./HTML
 
   # Deployment job
   deploy:
